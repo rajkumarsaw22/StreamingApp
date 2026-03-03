@@ -4,7 +4,7 @@ pipeline {
     environment {
         AWS_REGION = "us-west-1"
         ACCOUNT_ID = "975050024946"
-        ECR_BASE = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/rajsaw"
+        ECR_BASE = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/batch-14/rajsaw"
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
