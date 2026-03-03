@@ -4,6 +4,8 @@ This document explains how the repository is organized, what each service does, 
 
 ## 1) High-level Architecture
 
+
+
 The project is a microservice-based streaming platform with:
 
 - `frontend` (React SPA)
