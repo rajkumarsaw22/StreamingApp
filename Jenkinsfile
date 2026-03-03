@@ -58,7 +58,6 @@ pipeline {
                     credentialsId: 'rajsaw-ecr-cred'
                 ]]) {
                     sh """
-                    set -euo pipefail
                     aws ecr get-login-password --region ${AWS_REGION} | \
                     docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
                     """
@@ -69,7 +68,6 @@ pipeline {
         stage('Tag Images') {
             steps {
                 sh """
-                set -euo pipefail
                 docker tag frontend:latest ${ECR_BASE}/frontend:latest
                 docker tag frontend:${IMAGE_TAG} ${ECR_BASE}/frontend:${IMAGE_TAG}
                 docker tag authservice:latest ${ECR_BASE}/authservice:latest
@@ -87,7 +85,6 @@ pipeline {
         stage('Push Images') {
             steps {
                 sh """
-                set -euo pipefail
                 docker push ${ECR_BASE}/frontend:latest
                 docker push ${ECR_BASE}/frontend:${IMAGE_TAG}
                 docker push ${ECR_BASE}/authservice:latest
