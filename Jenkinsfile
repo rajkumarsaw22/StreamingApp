@@ -55,7 +55,7 @@ pipeline {
             steps {
                 withCredentials([[
                     $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'rajsaw-erc-cred'
+                    credentialsId: 'rajsaw-ecr-cred'
                 ]]) {
                     sh """
                     set -euo pipefail
