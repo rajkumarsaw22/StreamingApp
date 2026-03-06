@@ -102,6 +102,21 @@ pipeline {
             }
         }
 
+        stage('Validate Deployment Tools') {
+            steps {
+                sh """
+                set -e
+                command -v aws >/dev/null 2>&1 || { echo "Missing required tool: aws"; exit 1; }
+                command -v kubectl >/dev/null 2>&1 || { echo "Missing required tool: kubectl"; exit 1; }
+                command -v helm >/dev/null 2>&1 || { echo "Missing required tool: helm"; exit 1; }
+
+                aws --version
+                kubectl version --client
+                helm version
+                """
+            }
+        }
+
         stage('Deploy to EKS') {
             steps {
                 withCredentials([[
