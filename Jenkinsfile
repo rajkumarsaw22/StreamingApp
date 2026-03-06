@@ -102,17 +102,42 @@ pipeline {
             }
         }
 
+        stage('Bootstrap Helm (No SSH Needed)') {
+            steps {
+                sh """
+                set -e
+                if command -v helm >/dev/null 2>&1; then
+                  echo "Helm already available on agent: $(helm version --short)"
+                  exit 0
+                fi
+
+                mkdir -p "$WORKSPACE/.ci-bin"
+                curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | \
+                  HELM_INSTALL_DIR="$WORKSPACE/.ci-bin" USE_SUDO=false bash
+
+                "$WORKSPACE/.ci-bin/helm" version --short
+                """
+            }
+        }
+
         stage('Validate Deployment Tools') {
             steps {
                 sh """
                 set -e
                 command -v aws >/dev/null 2>&1 || { echo "Missing required tool: aws"; exit 1; }
                 command -v kubectl >/dev/null 2>&1 || { echo "Missing required tool: kubectl"; exit 1; }
-                command -v helm >/dev/null 2>&1 || { echo "Missing required tool: helm"; exit 1; }
+                if ! command -v helm >/dev/null 2>&1 && [ ! -x "$WORKSPACE/.ci-bin/helm" ]; then
+                  echo "Missing required tool: helm"
+                  exit 1
+                fi
 
                 aws --version
                 kubectl version --client
-                helm version
+                if command -v helm >/dev/null 2>&1; then
+                  helm version
+                else
+                  "$WORKSPACE/.ci-bin/helm" version
+                fi
                 """
             }
         }
@@ -127,7 +152,12 @@ pipeline {
                     set -e
                     aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER}
 
-                    helm upgrade --install ${HELM_RELEASE} ./streamingapp \
+                    HELM_CMD=helm
+                    if ! command -v helm >/dev/null 2>&1; then
+                      HELM_CMD="$WORKSPACE/.ci-bin/helm"
+                    fi
+
+                    "$HELM_CMD" upgrade --install ${HELM_RELEASE} ./streamingapp \
                       --namespace ${K8S_NAMESPACE} \
                       --create-namespace \
                       --set frontend.image=${ECR_BASE}/frontend:${IMAGE_TAG} \
