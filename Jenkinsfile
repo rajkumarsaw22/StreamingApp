@@ -162,7 +162,7 @@ pipeline {
                       HELM_CMD="\$WORKSPACE/.ci-bin/helm"
                     fi
 
-                    "$HELM_CMD" upgrade --install ${HELM_RELEASE} ./streamingapp \
+                    "\$HELM_CMD" upgrade --install ${HELM_RELEASE} ./streamingapp \
                       --namespace ${K8S_NAMESPACE} \
                       --create-namespace \
                       --set frontend.image=${ECR_BASE}/frontend:${IMAGE_TAG} \
