@@ -112,8 +112,13 @@ pipeline {
                 fi
 
                 mkdir -p "\$WORKSPACE/.ci-bin"
-                curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | \
-                  HELM_INSTALL_DIR="\$WORKSPACE/.ci-bin" USE_SUDO=false bash
+                HELM_VERSION="v3.20.0"
+                ARCHIVE="helm-\${HELM_VERSION}-linux-amd64.tar.gz"
+                curl -fsSL "https://get.helm.sh/\${ARCHIVE}" -o "\$WORKSPACE/\${ARCHIVE}"
+                tar -xzf "\$WORKSPACE/\${ARCHIVE}" -C "\$WORKSPACE"
+                mv "\$WORKSPACE/linux-amd64/helm" "\$WORKSPACE/.ci-bin/helm"
+                chmod +x "\$WORKSPACE/.ci-bin/helm"
+                rm -rf "\$WORKSPACE/linux-amd64" "\$WORKSPACE/\${ARCHIVE}"
 
                 "\$WORKSPACE/.ci-bin/helm" version --short
                 """
