@@ -122,7 +122,7 @@ pipeline {
                       --set chatService.image=${ECR_BASE}/chatservice:${IMAGE_TAG}
 
                     kubectl get deployments -n ${K8S_NAMESPACE} -l app.kubernetes.io/instance=${HELM_RELEASE} -o name | while read deploy; do
-                      kubectl rollout status -n ${K8S_NAMESPACE} "$deploy" --timeout=300s
+                      kubectl rollout status -n ${K8S_NAMESPACE} "\$deploy" --timeout=300s
                     done
                     """
                 }
