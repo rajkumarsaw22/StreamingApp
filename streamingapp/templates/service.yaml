@@ -1,0 +1,30 @@
+{{- $root := . -}}
+{{- $services := dict
+  "frontend" .Values.frontend
+  "authService" .Values.authService
+  "streamingService" .Values.streamingService
+  "adminService" .Values.adminService
+  "chatService" .Values.chatService
+-}}
+{{- range $name, $cfg := $services }}
+{{- if (default true $cfg.enabled) }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "streamingapp.fullname" $root }}-{{ $name | lower }}
+  labels:
+    {{- include "streamingapp.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $name | quote }}
+spec:
+  type: {{ $root.Values.service.type }}
+  ports:
+    - port: {{ $cfg.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "streamingapp.selectorLabels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $name | quote }}
+{{- end }}
+{{- end }}

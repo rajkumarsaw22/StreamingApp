@@ -6,6 +6,9 @@ pipeline {
         ACCOUNT_ID = "975050024946"
         ECR_BASE = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/batch-14/rajsaw"
         IMAGE_TAG = "${BUILD_NUMBER}"
+        EKS_CLUSTER = "rajsaw-streaming-cluster"
+        K8S_NAMESPACE = "streamingapp"
+        HELM_RELEASE = "streamingapp"
     }
 
     stages {
@@ -98,14 +101,41 @@ pipeline {
                 """
             }
         }
+
+        stage('Deploy to EKS') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'rajsaw-ecr-cred'
+                ]]) {
+                    sh """
+                    set -e
+                    aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER}
+
+                    helm upgrade --install ${HELM_RELEASE} ./streamingapp \
+                      --namespace ${K8S_NAMESPACE} \
+                      --create-namespace \
+                      --set frontend.image=${ECR_BASE}/frontend:${IMAGE_TAG} \
+                      --set authService.image=${ECR_BASE}/authservice:${IMAGE_TAG} \
+                      --set streamingService.image=${ECR_BASE}/streamingservice:${IMAGE_TAG} \
+                      --set adminService.image=${ECR_BASE}/adminservice:${IMAGE_TAG} \
+                      --set chatService.image=${ECR_BASE}/chatservice:${IMAGE_TAG}
+
+                    kubectl get deployments -n ${K8S_NAMESPACE} -l app.kubernetes.io/instance=${HELM_RELEASE} -o name | while read deploy; do
+                      kubectl rollout status -n ${K8S_NAMESPACE} "$deploy" --timeout=300s
+                    done
+                    """
+                }
+            }
+        }
     }
 
     post {
         success {
-            echo "All microservices built & pushed successfully!"
+            echo "All microservices built, pushed, and deployed to EKS successfully!"
         }
         failure {
-            echo "Build failed!"
+            echo "Pipeline failed during build, push, or EKS deployment."
         }
     }
 }

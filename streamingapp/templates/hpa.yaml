@@ -1,0 +1,46 @@
+{{- if .Values.autoscaling.enabled }}
+{{- $root := . -}}
+{{- $services := dict
+  "frontend" .Values.frontend
+  "authService" .Values.authService
+  "streamingService" .Values.streamingService
+  "adminService" .Values.adminService
+  "chatService" .Values.chatService
+-}}
+{{- range $name, $cfg := $services }}
+{{- if (default true $cfg.enabled) }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "streamingapp.fullname" $root }}-{{ $name | lower }}
+  labels:
+    {{- include "streamingapp.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $name | quote }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "streamingapp.fullname" $root }}-{{ $name | lower }}
+  minReplicas: {{ $root.Values.autoscaling.minReplicas }}
+  maxReplicas: {{ $root.Values.autoscaling.maxReplicas }}
+  metrics:
+    {{- if $root.Values.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ $root.Values.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if $root.Values.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ $root.Values.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
