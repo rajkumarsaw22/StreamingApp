@@ -107,15 +107,15 @@ pipeline {
                 sh """
                 set -e
                 if command -v helm >/dev/null 2>&1; then
-                  echo "Helm already available on agent: $(helm version --short)"
+                  echo "Helm already available on agent: \$(helm version --short)"
                   exit 0
                 fi
 
-                mkdir -p "$WORKSPACE/.ci-bin"
+                mkdir -p "\$WORKSPACE/.ci-bin"
                 curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | \
-                  HELM_INSTALL_DIR="$WORKSPACE/.ci-bin" USE_SUDO=false bash
+                  HELM_INSTALL_DIR="\$WORKSPACE/.ci-bin" USE_SUDO=false bash
 
-                "$WORKSPACE/.ci-bin/helm" version --short
+                "\$WORKSPACE/.ci-bin/helm" version --short
                 """
             }
         }
@@ -126,7 +126,7 @@ pipeline {
                 set -e
                 command -v aws >/dev/null 2>&1 || { echo "Missing required tool: aws"; exit 1; }
                 command -v kubectl >/dev/null 2>&1 || { echo "Missing required tool: kubectl"; exit 1; }
-                if ! command -v helm >/dev/null 2>&1 && [ ! -x "$WORKSPACE/.ci-bin/helm" ]; then
+                if ! command -v helm >/dev/null 2>&1 && [ ! -x "\$WORKSPACE/.ci-bin/helm" ]; then
                   echo "Missing required tool: helm"
                   exit 1
                 fi
@@ -136,7 +136,7 @@ pipeline {
                 if command -v helm >/dev/null 2>&1; then
                   helm version
                 else
-                  "$WORKSPACE/.ci-bin/helm" version
+                  "\$WORKSPACE/.ci-bin/helm" version
                 fi
                 """
             }
@@ -154,7 +154,7 @@ pipeline {
 
                     HELM_CMD=helm
                     if ! command -v helm >/dev/null 2>&1; then
-                      HELM_CMD="$WORKSPACE/.ci-bin/helm"
+                      HELM_CMD="\$WORKSPACE/.ci-bin/helm"
                     fi
 
                     "$HELM_CMD" upgrade --install ${HELM_RELEASE} ./streamingapp \
