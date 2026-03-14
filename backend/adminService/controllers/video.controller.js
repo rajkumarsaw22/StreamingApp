@@ -2,16 +2,17 @@ const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const fs = require('fs');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { Video } = require('../models/video.model');
-const { s3Client, buildPublicUrl } = require('../util/s3');
+const { s3Client, buildPublicUrl, getBucket } = require('../util/s3');
 
 //Raj Kumar Saw
 
-const bucket = process.env.AWS_S3_BUCKET;
-
 const ensureBucket = () => {
+  const bucket = getBucket();
   if (!bucket) {
     throw new Error('AWS_S3_BUCKET is not configured');
   }
+
+  return bucket;
 };
 
 const formatVideo = (doc) => {
@@ -59,7 +60,7 @@ const listVideos = async (req, res, next) => {
 
 const getUploadUrls = async (req, res, next) => {
   try {
-    ensureBucket();
+    const bucket = ensureBucket();
     const { videoFileName, thumbnailFileName } = req.body;
 
     if (!videoFileName || !thumbnailFileName) {
@@ -100,7 +101,7 @@ const getUploadUrls = async (req, res, next) => {
 
 const getVideoUploadUrl = async (req, res, next) => {
   try {
-    ensureBucket();
+    const bucket = ensureBucket();
     const { videoFileName } = req.body;
 
     if (!videoFileName) {
@@ -131,7 +132,7 @@ const getVideoUploadUrl = async (req, res, next) => {
 
 const getThumbnailUploadUrl = async (req, res, next) => {
   try {
-    ensureBucket();
+    const bucket = ensureBucket();
     const { thumbnailFileName } = req.body;
 
     if (!thumbnailFileName) {
@@ -162,7 +163,7 @@ const getThumbnailUploadUrl = async (req, res, next) => {
 
 const uploadVideoFile = async (req, res, next) => {
   try {
-    ensureBucket();
+    const bucket = ensureBucket();
     const { file } = req;
 
     if (!file) {
@@ -204,7 +205,7 @@ const uploadVideoFile = async (req, res, next) => {
 
 const uploadThumbnailFile = async (req, res, next) => {
   try {
-    ensureBucket();
+    const bucket = ensureBucket();
     const { file } = req;
 
     if (!file) {
@@ -339,7 +340,7 @@ const updateVideo = async (req, res, next) => {
 
 const deleteVideo = async (req, res, next) => {
   try {
-    ensureBucket();
+    const bucket = ensureBucket();
     const video = await Video.findById(req.params.id);
     if (!video) {
       return res.status(404).json({

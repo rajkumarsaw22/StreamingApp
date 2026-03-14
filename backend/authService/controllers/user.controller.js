@@ -1,5 +1,5 @@
 const User = require("../models/user.model").User;
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const jwt = require('../util/jwtAuth')
 var crypto = require("crypto");
 const cookieParser = require('cookie-parser');

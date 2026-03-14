@@ -1,4 +1,12 @@
-version: "3.9"
+#
+# Some environments have DNS issues resolving AWS hostnames via the default Docker
+# embedded resolver (127.0.0.11). Use explicit DNS servers for services that
+# must reach AWS (S3).
+#
+x-dns: &aws_dns
+  dns:
+    - 1.1.1.1
+    - 8.8.8.8
 
 services:
   mongo:
@@ -10,8 +18,11 @@ services:
       - mongo-data:/data/db
 
   auth:
+    <<: *aws_dns
     build:
       context: ./backend/authService
+    env_file:
+      - ./backend/authService/.env
     depends_on:
       - mongo
     environment:
@@ -19,17 +30,17 @@ services:
       MONGO_URI: mongodb://mongo:27017/${MONGO_DB:-streamingapp}
       JWT_SECRET: ${JWT_SECRET:-changeme}
       CLIENT_URLS: ${CLIENT_URLS:-http://localhost:3000}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
-      AWS_REGION: ${AWS_REGION:-ap-south-1}
-      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+      AWS_CDN_URL: ${AWS_CDN_URL:-}
     ports:
       - "${AUTH_PORT:-3001}:3001"
 
   streaming:
+    <<: *aws_dns
     build:
       context: ./backend
       dockerfile: streamingService/Dockerfile
+    env_file:
+      - ./backend/streamingService/.env
     depends_on:
       - mongo
     environment:
@@ -37,19 +48,18 @@ services:
       MONGO_URI: mongodb://mongo:27017/${MONGO_DB:-streamingapp}
       JWT_SECRET: ${JWT_SECRET:-changeme}
       CLIENT_URLS: ${CLIENT_URLS:-http://localhost:3000}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
-      AWS_REGION: ${AWS_REGION:-ap-south-1}
-      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
       AWS_CDN_URL: ${AWS_CDN_URL:-}
       STREAMING_PUBLIC_URL: ${STREAMING_PUBLIC_URL:-http://localhost:3002}
     ports:
       - "${STREAMING_PORT:-3002}:3002"
 
   admin:
+    <<: *aws_dns
     build:
       context: ./backend
       dockerfile: adminService/Dockerfile
+    env_file:
+      - ./backend/adminService/.env
     depends_on:
       - mongo
     environment:
@@ -57,10 +67,6 @@ services:
       MONGO_URI: mongodb://mongo:27017/${MONGO_DB:-streamingapp}
       JWT_SECRET: ${JWT_SECRET:-changeme}
       CLIENT_URLS: ${CLIENT_URLS:-http://localhost:3000}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
-      AWS_REGION: ${AWS_REGION:-ap-south-1}
-      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
       AWS_CDN_URL: ${AWS_CDN_URL:-}
     ports:
       - "${ADMIN_PORT:-3003}:3003"
