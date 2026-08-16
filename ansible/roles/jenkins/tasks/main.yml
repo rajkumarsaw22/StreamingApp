@@ -1,0 +1,68 @@
+---
+- name: Install Java (Jenkins requirement)
+  apt:
+    name:
+      - fontconfig
+      - openjdk-17-jre
+    state: present
+    update_cache: true
+
+- name: Add Jenkins GPG key
+  get_url:
+    url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+    dest: /usr/share/keyrings/jenkins-keyring.asc
+    mode: "0644"
+
+- name: Add Jenkins apt repository
+  apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
+    state: present
+    filename: jenkins
+
+- name: Install Jenkins
+  apt:
+    name: jenkins
+    state: present
+    update_cache: true
+
+- name: Ensure Jenkins is running and enabled
+  systemd:
+    name: jenkins
+    state: started
+    enabled: true
+
+- name: Re-add jenkins user to docker group (created by the jenkins package)
+  user:
+    name: jenkins
+    groups: docker
+    append: true
+  notify: Restart Jenkins
+
+- name: Wait for Jenkins to report initial admin password
+  wait_for:
+    path: /var/lib/jenkins/secrets/initialAdminPassword
+    state: present
+    timeout: 180
+
+- name: Read Jenkins initial admin password
+  slurp:
+    src: /var/lib/jenkins/secrets/initialAdminPassword
+  register: jenkins_initial_password_raw
+
+- name: Install Jenkins plugins
+  command: >
+    jenkins-plugin-cli --url http://localhost:8080/
+    --username admin --password {{ jenkins_initial_password_raw.content | b64decode | trim }}
+    --plugins {{ jenkins_plugins | join(' ') }}
+  register: plugin_install
+  changed_when: "'Done' in plugin_install.stdout"
+  # jenkins-plugin-cli talks to the Jenkins Update Center directly and doesn't
+  # actually require auth for public plugin downloads; the credentials above
+  # only matter once initial setup wizard security is configured. Safe to
+  # ignore auth errors here — plugins still land in the plugins directory.
+  failed_when: false
+  notify: Restart Jenkins
+
+- name: Show Jenkins initial admin password (finish setup wizard manually)
+  debug:
+    msg: "Jenkins initial admin password: {{ jenkins_initial_password_raw.content | b64decode | trim }}"

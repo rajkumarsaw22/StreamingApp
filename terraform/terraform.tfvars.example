@@ -1,0 +1,13 @@
+# Copy to terraform.tfvars and fill in before `terraform apply`.
+# Never commit terraform.tfvars if it contains real values that shouldn't be public.
+
+aws_region       = "us-west-1"
+project          = "rajsaw-streaming"
+environment      = "dev"
+
+jenkins_key_name         = "your-ec2-keypair-name"
+jenkins_allowed_ssh_cidr = "203.0.113.4/32" # your IP/32 — never 0.0.0.0/0
+jenkins_allowed_web_cidr = "203.0.113.4/32"
+
+tf_state_bucket = "rajsaw-streaming-tfstate"
+tf_lock_table   = "rajsaw-streaming-tf-locks"

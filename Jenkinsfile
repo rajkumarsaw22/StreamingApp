@@ -178,14 +178,63 @@ pipeline {
                 }
             }
         }
+        stage('Monitoring') {
+            steps {
+                sh """
+                set -e
+                HELM_CMD=helm
+                if ! command -v helm >/dev/null 2>&1; then
+                  HELM_CMD="\$WORKSPACE/.ci-bin/helm"
+                fi
+
+                "\$HELM_CMD" repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
+                "\$HELM_CMD" repo update
+
+                "\$HELM_CMD" upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+                  --namespace monitoring --create-namespace \
+                  -f monitoring/kube-prometheus-stack-values.yaml \
+                  --set grafana.adminPassword="\${GRAFANA_ADMIN_PASSWORD:-changeme}"
+
+                kubectl apply -f monitoring/alerts.yaml
+                """
+            }
+        }
+
+        stage('Smoke Test') {
+            steps {
+                sh """
+                set -e
+                kubectl get svc -n ${K8S_NAMESPACE} -l app.kubernetes.io/instance=${HELM_RELEASE} -o name | while read svc; do
+                  name=\$(echo "\$svc" | sed 's|service/||')
+                  SVC_PORT=\$(kubectl get "\$svc" -n ${K8S_NAMESPACE} -o jsonpath='{.spec.ports[0].port}')
+                  echo "Port-forwarding \$name (port \$SVC_PORT) for smoke test..."
+                  kubectl port-forward -n ${K8S_NAMESPACE} "\$svc" "18080:\${SVC_PORT}" >/tmp/pf-\$name.log 2>&1 &
+                  PF_PID=\$!
+                  sleep 3
+                  case "\$name" in
+                    *authservice*) PATH_SUFFIX=/health ;;
+                    *streamingservice*|*adminservice*|*chatservice*) PATH_SUFFIX=/api/health ;;
+                    *) PATH_SUFFIX=/ ;;
+                  esac
+                  STATUS=\$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:18080\${PATH_SUFFIX}" || echo "000")
+                  kill \$PF_PID 2>/dev/null || true
+                  echo "\$name \${PATH_SUFFIX} -> HTTP \$STATUS"
+                  if [ "\$STATUS" != "200" ]; then
+                    echo "Smoke test failed for \$name"
+                    exit 1
+                  fi
+                done
+                """
+            }
+        }
     }
 
     post {
         success {
-            echo "All microservices built, pushed, and deployed to EKS successfully!"
+            echo "All microservices built, pushed, deployed to EKS, and verified successfully!"
         }
         failure {
-            echo "Pipeline failed during build, push, or EKS deployment."
+            echo "Pipeline failed during build, push, deployment, monitoring setup, or smoke test."
         }
     }
 }

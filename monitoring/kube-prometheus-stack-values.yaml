@@ -1,0 +1,75 @@
+# Values for the prometheus-community/kube-prometheus-stack chart.
+# Installed into its own `monitoring` namespace, separate from the `streamingapp`
+# release, via the Jenkinsfile's "Monitoring" stage or manually:
+#
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+#     --namespace monitoring --create-namespace \
+#     -f monitoring/kube-prometheus-stack-values.yaml \
+#     --set alertmanager.alertmanagerSpec.serviceAccountName=kube-prometheus-stack-alertmanager
+
+# cost optimization: this is a small (single-EKS-cluster) deployment — keep
+# retention short and resource requests modest rather than the chart defaults.
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        memory: 1Gi
+    # picks up the PrometheusRule in alerts.yaml automatically
+    ruleSelectorNilUsesHelmValues: false
+    ruleNamespaceSelector: {}
+    ruleSelector: {}
+
+grafana:
+  enabled: true
+  adminPassword: "" # override at install time with --set grafana.adminPassword=... (never commit a real one)
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  # ships with useful cluster/node dashboards out of the box via the chart's
+  # default dashboard set (kubernetes-cluster, node-exporter, etc.)
+  defaultDashboardsEnabled: true
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+    # Annotate this ServiceAccount with the IRSA role from
+    # `terraform output alertmanager_sns_role_arn` so Alertmanager can call
+    # sns:Publish without static AWS credentials.
+    serviceAccountName: kube-prometheus-stack-alertmanager
+
+  config:
+    route:
+      receiver: sns-alerts
+      group_by: ["alertname", "namespace"]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 3h
+    receivers:
+      - name: sns-alerts
+        sns_configs:
+          - api_url: "" # not needed for real AWS (only for local SNS emulators)
+            sigv4:
+              region: us-west-1
+            # terraform output alerts_sns_topic_arn
+            topic_arn: "arn:aws:sns:us-west-1:975050024946:rajsaw-streaming-alerts"
+            subject: "{{ .CommonAnnotations.summary | default .CommonLabels.alertname }}"
+            message: '{{ template "sns.default.message" . }}'
+
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true

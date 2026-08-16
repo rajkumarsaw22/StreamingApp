@@ -1,0 +1,26 @@
+---
+# Provisions the Jenkins EC2 host created by terraform/jenkins-ec2.tf with
+# everything the root Jenkinsfile needs on its agent: Docker, AWS CLI, kubectl,
+# Helm, and Jenkins itself with the Docker/Kubernetes/AWS CLI plugins.
+#
+#   ansible-playbook -i inventory.ini playbook.yml
+
+- name: Configure Jenkins CI/CD host
+  hosts: jenkins
+  become: true
+  vars:
+    kubectl_version: "1.30.0"
+    helm_version: "v3.20.0"
+    jenkins_plugins:
+      - docker-plugin
+      - docker-workflow
+      - kubernetes
+      - kubernetes-cli
+      - amazon-ecr
+      - pipeline-aws
+
+  roles:
+    - docker
+    - awscli
+    - kubectl_helm
+    - jenkins

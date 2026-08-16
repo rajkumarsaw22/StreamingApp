@@ -1,0 +1,8 @@
+# Copy to inventory.ini and fill in the Jenkins host's public IP
+# (terraform output jenkins_public_ip) and your SSH key.
+
+[jenkins]
+jenkins-host ansible_host=203.0.113.4 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/your-ec2-keypair-name.pem
+
+[jenkins:vars]
+ansible_python_interpreter=/usr/bin/python3

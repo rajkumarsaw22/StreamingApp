@@ -127,11 +127,20 @@ cd frontend && npm start
 
 ## Testing
 
-Automated tests are not yet included. Recommended smoke checks:
+Unit/integration test suites are not yet included. Recommended manual smoke checks:
 
 1. Register and log in through the web UI.
 2. Upload a small video + thumbnail via the admin dashboard (requires valid S3 credentials).
 3. Confirm playback from the browse page and verify that chat messages broadcast between multiple browser tabs.
+
+For deployed environments, the `Smoke Test` stage in the root `Jenkinsfile` automates a
+version of this at the infrastructure level: after every EKS deploy it curls each
+service's health endpoint and fails the build on a non-200 response.
+
+## CI/CD & Infrastructure
+
+The full DevOps pipeline (Terraform, Ansible, Jenkins, EKS via Helm, Prometheus/Grafana
+monitoring) is documented end-to-end in [`docs/PIPELINE.md`](docs/PIPELINE.md).
 
 ## License
 

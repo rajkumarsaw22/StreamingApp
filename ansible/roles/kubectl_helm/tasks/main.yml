@@ -1,0 +1,23 @@
+---
+- name: Download kubectl
+  get_url:
+    url: "https://dl.k8s.io/release/v{{ kubectl_version }}/bin/linux/amd64/kubectl"
+    dest: /usr/local/bin/kubectl
+    mode: "0755"
+
+- name: Check installed Helm version
+  command: helm version --short
+  register: helm_check
+  failed_when: false
+  changed_when: false
+
+- name: Download Helm install script
+  get_url:
+    url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    dest: /tmp/get-helm-3.sh
+    mode: "0755"
+  when: helm_check.rc != 0 or helm_version not in helm_check.stdout
+
+- name: Install Helm
+  command: /tmp/get-helm-3.sh --version {{ helm_version }}
+  when: helm_check.rc != 0 or helm_version not in helm_check.stdout
