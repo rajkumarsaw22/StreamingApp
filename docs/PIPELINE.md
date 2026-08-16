@@ -66,6 +66,27 @@ aws eks associate-access-policy --cluster-name "$(terraform output -raw eks_clus
   --access-scope type=cluster
 ```
 
+If Jenkins authenticates via a **stored AWS credential** (a dedicated IAM
+user, e.g. `rajsaw-streaming-jenkins-ci`, used for the `rajsaw-ecr-cred`
+Jenkins credential) rather than the EC2 instance profile, that IAM
+principal needs its own access entry too — the instance role's entry above
+does not cover it:
+
+```bash
+aws eks create-access-entry --cluster-name "$(terraform output -raw eks_cluster_name)" \
+  --principal-arn arn:aws:iam::<ACCOUNT_ID>:user/<JENKINS_CI_USER>
+aws eks associate-access-policy --cluster-name "$(terraform output -raw eks_cluster_name)" \
+  --principal-arn arn:aws:iam::<ACCOUNT_ID>:user/<JENKINS_CI_USER> \
+  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
+  --access-scope type=cluster
+```
+
+Symptom if this is skipped: `helm upgrade` in the `Deploy to EKS` stage
+fails with `Error: Kubernetes cluster unreachable: the server has asked for
+the client to provide credentials` — network connectivity to the API
+server succeeds, but the caller's IAM identity isn't mapped into the
+cluster's RBAC.
+
 ## 2) Configure the Jenkins host (Ansible)
 
 ```bash
@@ -134,6 +155,7 @@ functions.
 |---|---|---|
 | `Login to ECR` stage fails with `no basic auth credentials` | `rajsaw-ecr-cred` credential missing/expired in Jenkins | Re-add the AWS credential, or switch to the instance-profile-based auth (no static keys) |
 | `Deploy to EKS` fails with `Unauthorized` from kubectl | Jenkins IAM role isn't mapped into the cluster's RBAC | Re-run the `aws eks create-access-entry` / `associate-access-policy` commands from step 1 |
+| `Deploy to EKS` fails with `the server has asked for the client to provide credentials` (network reaches the API fine) | The IAM identity behind the `rajsaw-ecr-cred` Jenkins credential (a static-key IAM user, if that's the auth method chosen) has no EKS access entry — only the EC2 instance role does | Grant that IAM user its own access entry, see step 1 |
 | `helm upgrade` hangs / times out | New pods can't pull from ECR, or `Insufficient cpu`/`memory` on nodes | `kubectl describe pod <pod>` in `streamingapp` namespace; check node capacity with `kubectl top nodes` (bump `node_desired_size` in `terraform/variables.tf` if genuinely under-provisioned) |
 | `Smoke Test` fails for one service only | That service's pod is unhealthy or its `/health`/`/api/health` route changed | `kubectl logs -n streamingapp deploy/streamingapp-<service>`; confirm the path in `monitoring/README.md` still matches `streamingapp/values.yaml` probes |
 | Alertmanager never reaches Slack/Teams/Telegram | `topic_arn` in `monitoring/kube-prometheus-stack-values.yaml` doesn't match `terraform output alerts_sns_topic_arn`, or the Alertmanager ServiceAccount isn't annotated with `alertmanager_sns_role_arn` | Re-check both values; `kubectl describe sa kube-prometheus-stack-alertmanager -n monitoring` should show the `eks.amazonaws.com/role-arn` annotation |
