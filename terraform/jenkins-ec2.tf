@@ -65,6 +65,19 @@ resource "aws_instance" "jenkins" {
   }
 }
 
+# The EKS module defaults cluster_endpoint_private_access to true, so from
+# inside this VPC the cluster API DNS name resolves to a private ENI IP.
+# Without this rule, `helm`/`kubectl` from Jenkins time out reaching it.
+resource "aws_security_group_rule" "eks_cluster_ingress_from_jenkins" {
+  type                     = "ingress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  security_group_id        = module.eks.cluster_security_group_id
+  source_security_group_id = aws_security_group.jenkins.id
+  description              = "Allow Jenkins to reach the EKS API server"
+}
+
 resource "aws_eip" "jenkins" {
   instance = aws_instance.jenkins.id
   domain   = "vpc"
