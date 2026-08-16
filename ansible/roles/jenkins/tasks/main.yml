@@ -50,18 +50,28 @@
     src: /var/lib/jenkins/secrets/initialAdminPassword
   register: jenkins_initial_password_raw
 
+- name: Download the Jenkins plugin installation manager tool
+  get_url:
+    url: https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/2.15.0/jenkins-plugin-manager-2.15.0.jar
+    dest: /opt/jenkins-plugin-manager.jar
+    mode: "0644"
+
 - name: Install Jenkins plugins
   command: >
-    jenkins-plugin-cli --url http://localhost:8080/
-    --username admin --password {{ jenkins_initial_password_raw.content | b64decode | trim }}
+    java -jar /opt/jenkins-plugin-manager.jar
+    --war /usr/share/java/jenkins.war
+    --plugin-download-directory /var/lib/jenkins/plugins
     --plugins {{ jenkins_plugins | join(' ') }}
   register: plugin_install
-  changed_when: "'Done' in plugin_install.stdout"
-  # jenkins-plugin-cli talks to the Jenkins Update Center directly and doesn't
-  # actually require auth for public plugin downloads; the credentials above
-  # only matter once initial setup wizard security is configured. Safe to
-  # ignore auth errors here — plugins still land in the plugins directory.
-  failed_when: false
+  changed_when: "'Skipping' not in plugin_install.stdout"
+  notify: Restart Jenkins
+
+- name: Fix plugin directory ownership (installer above runs as root)
+  file:
+    path: /var/lib/jenkins/plugins
+    owner: jenkins
+    group: jenkins
+    recurse: true
   notify: Restart Jenkins
 
 - name: Show Jenkins initial admin password (finish setup wizard manually)

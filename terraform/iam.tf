@@ -25,12 +25,27 @@ resource "aws_iam_role_policy_attachment" "jenkins_ecr" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
 }
 
+# AmazonEKSClusterPolicy is for the cluster's own service role (what EKS uses to
+# call EC2/ELB on your behalf) and does NOT grant eks:DescribeCluster — the
+# permission `aws eks update-kubeconfig` actually needs for a caller like Jenkins.
 # Cluster-side RBAC (mapping this role to a Kubernetes group) still needs to be
 # granted via the EKS access entries / aws-auth after `terraform apply`; see
 # docs/PIPELINE.md for the `aws eks create-access-entry` step.
-resource "aws_iam_role_policy_attachment" "jenkins_eks_describe" {
-  role       = aws_iam_role.jenkins.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+data "aws_iam_policy_document" "jenkins_eks_describe" {
+  statement {
+    actions = [
+      "eks:DescribeCluster",
+      "eks:ListClusters",
+      "eks:AccessKubernetesApi",
+    ]
+    resources = [module.eks.cluster_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "jenkins_eks_describe" {
+  name   = "${var.project}-jenkins-eks-describe"
+  role   = aws_iam_role.jenkins.id
+  policy = data.aws_iam_policy_document.jenkins_eks_describe.json
 }
 
 resource "aws_iam_instance_profile" "jenkins" {
