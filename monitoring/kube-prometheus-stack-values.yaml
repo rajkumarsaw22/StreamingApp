@@ -67,6 +67,10 @@ alertmanager:
             topic_arn: "arn:aws:sns:us-west-1:637423292904:rajsaw-streaming-alerts"
             subject: "{{ .CommonAnnotations.summary | default .CommonLabels.alertname }}"
             message: '{{ template "sns.default.message" . }}'
+      # the chart always routes its built-in Watchdog alert (a liveness
+      # heartbeat, not a real incident) to a receiver literally named "null" —
+      # it must exist even though it does nothing
+      - name: "null"
 
 nodeExporter:
   enabled: true
