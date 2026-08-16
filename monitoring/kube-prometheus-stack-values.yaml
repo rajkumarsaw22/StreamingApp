@@ -64,7 +64,7 @@ alertmanager:
             sigv4:
               region: us-west-1
             # terraform output alerts_sns_topic_arn
-            topic_arn: "arn:aws:sns:us-west-1:975050024946:rajsaw-streaming-alerts"
+            topic_arn: "arn:aws:sns:us-west-1:637423292904:rajsaw-streaming-alerts"
             subject: "{{ .CommonAnnotations.summary | default .CommonLabels.alertname }}"
             message: '{{ template "sns.default.message" . }}'
 

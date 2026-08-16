@@ -9,10 +9,11 @@ module "vpc" {
   private_subnets = [for i, az in var.azs : cidrsubnet(var.vpc_cidr, 4, i)]
   public_subnets  = [for i, az in var.azs : cidrsubnet(var.vpc_cidr, 4, i + 8)]
 
-  enable_nat_gateway   = true
-  single_nat_gateway   = true # cost optimization: one NAT for a dev/test-sized cluster
-  enable_dns_hostnames = true
-  enable_dns_support   = true
+  enable_nat_gateway      = true
+  single_nat_gateway      = true # cost optimization: one NAT for a dev/test-sized cluster
+  enable_dns_hostnames    = true
+  enable_dns_support      = true
+  map_public_ip_on_launch = true # so the Jenkins EC2 host in the public subnet gets a public IP
 
   # required so the EKS control plane and AWS LB controller can discover subnets
   public_subnet_tags = {

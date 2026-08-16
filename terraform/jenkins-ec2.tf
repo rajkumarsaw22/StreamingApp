@@ -64,3 +64,14 @@ resource "aws_instance" "jenkins" {
     ManagedBy = "terraform"
   }
 }
+
+resource "aws_eip" "jenkins" {
+  instance = aws_instance.jenkins.id
+  domain   = "vpc"
+
+  tags = {
+    Name      = "${var.project}-jenkins-eip"
+    Project   = var.project
+    ManagedBy = "terraform"
+  }
+}

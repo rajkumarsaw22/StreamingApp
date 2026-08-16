@@ -5,6 +5,12 @@
   failed_when: false
   changed_when: false
 
+- name: Install unzip (required by the unarchive module below)
+  apt:
+    name: unzip
+    state: present
+  when: aws_cli_check.rc != 0
+
 - name: Download AWS CLI v2 installer
   get_url:
     url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip

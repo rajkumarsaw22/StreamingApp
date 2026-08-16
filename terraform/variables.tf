@@ -25,7 +25,7 @@ variable "vpc_cidr" {
 variable "azs" {
   description = "Availability zones to spread subnets across"
   type        = list(string)
-  default     = ["us-west-1a", "us-west-1c"]
+  default     = ["us-west-1b", "us-west-1c"]
 }
 
 variable "eks_cluster_name" {
@@ -37,7 +37,7 @@ variable "eks_cluster_name" {
 variable "eks_cluster_version" {
   description = "Kubernetes version for the EKS control plane"
   type        = string
-  default     = "1.30"
+  default     = "1.31"
 }
 
 variable "node_instance_types" {
