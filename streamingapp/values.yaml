@@ -22,6 +22,16 @@ frontend:
   image: 637423292904.dkr.ecr.us-west-1.amazonaws.com/batch-14/rajsaw/frontend:latest
   port: 80
   imagePullPolicy: IfNotPresent
+  # Only the frontend gets a public AWS load balancer (the AWS Load Balancer
+  # Controller reconciles Service type=LoadBalancer into a real NLB on
+  # EKS 1.23+ — there's no in-tree provider anymore). Backend services stay
+  # ClusterIP and are reached only through the nginx reverse proxy baked
+  # into the frontend image (frontend/nginx.conf).
+  serviceType: LoadBalancer
+  serviceAnnotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
   livenessProbe:
     httpGet:
       path: /

@@ -16,8 +16,12 @@ metadata:
   labels:
     {{- include "streamingapp.labels" $root | nindent 4 }}
     app.kubernetes.io/component: {{ $name | quote }}
+  {{- with $cfg.serviceAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
-  type: {{ $root.Values.service.type }}
+  type: {{ $cfg.serviceType | default $root.Values.service.type }}
   ports:
     - port: {{ $cfg.port }}
       targetPort: http

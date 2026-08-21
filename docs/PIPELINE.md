@@ -136,6 +136,58 @@ Trigger a build. Stages run in this order:
 9. **Smoke Test** — curls each service's actual health endpoint through a
    temporary `kubectl port-forward`; fails the build on any non-200
 
+## 4a) Public access (AWS Load Balancer Controller)
+
+`Deploy to EKS` creates all 5 services as `ClusterIP` by default — nothing
+is reachable outside the VPC until this section is done once.
+
+On EKS 1.23+ there is no in-tree AWS cloud provider, so a plain
+`Service type: LoadBalancer` stays `Pending` forever without a controller
+watching it. `terraform/lb-controller.tf` creates the IAM policy + IRSA
+role; the controller itself is installed once, out of band from Terraform:
+
+```bash
+kubectl apply -f - <<'YAML'
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aws-load-balancer-controller
+  namespace: kube-system
+  annotations:
+    eks.amazonaws.com/role-arn: <terraform output lb_controller_role_arn>
+YAML
+
+helm repo add eks https://aws.github.io/eks-charts
+helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
+  -n kube-system \
+  --set clusterName=rajsaw-streaming-cluster \
+  --set serviceAccount.create=false \
+  --set serviceAccount.name=aws-load-balancer-controller \
+  --set region=us-west-1 \
+  --set vpcId=<terraform output vpc_id>
+```
+
+Only the `frontend` Service is `type: LoadBalancer`
+(`streamingapp/values.yaml`'s `frontend.serviceType` / `serviceAnnotations`)
+— the other 4 stay `ClusterIP`. The frontend's nginx (`frontend/nginx.conf`)
+reverse-proxies `/api/streaming`, `/api/admin`, `/api/chat`, `/socket.io`,
+and the catch-all `/api` to those internal services by their in-cluster DNS
+names, so **one NLB** is enough for the whole app instead of five.
+
+Get the NLB hostname once it's created:
+
+```bash
+kubectl get svc streamingapp-frontend -n streamingapp
+```
+
+That hostname has to be baked into the frontend image at *build* time — the
+`REACT_APP_STREAMING_PUBLIC_URL` / `REACT_APP_CHAT_SOCKET_URL` build args in
+`Jenkinsfile`'s `Build Frontend` stage reference `${PUBLIC_URL}`
+(`environment {}` block at the top of the file). If the LoadBalancer Service
+is ever deleted and recreated, AWS assigns a new hostname — update
+`PUBLIC_URL` there to match, or every subsequent build will bake in a dead
+address.
+
 ## 5) Verify
 
 ```bash

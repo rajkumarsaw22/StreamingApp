@@ -9,6 +9,9 @@ pipeline {
         EKS_CLUSTER = "rajsaw-streaming-cluster"
         K8S_NAMESPACE = "streamingapp"
         HELM_RELEASE = "streamingapp"
+        // NLB hostname fronting the frontend Service (kubectl get svc streamingapp-frontend -n streamingapp).
+        // Only changes if that LoadBalancer Service is deleted and recreated; update here if so.
+        PUBLIC_URL = "http://k8s-streamin-streamin-8672a4a882-d9498af00bf71f12.elb.us-west-1.amazonaws.com"
     }
 
     stages {
@@ -24,7 +27,16 @@ pipeline {
 
                 stage('Build Frontend') {
                     steps {
-                        sh 'docker build -t frontend:latest -t frontend:${IMAGE_TAG} frontend'
+                        sh '''
+                        docker build \
+                          --build-arg REACT_APP_AUTH_API_URL=/api \
+                          --build-arg REACT_APP_STREAMING_API_URL=/api/streaming \
+                          --build-arg REACT_APP_STREAMING_PUBLIC_URL=${PUBLIC_URL} \
+                          --build-arg REACT_APP_ADMIN_API_URL=/api/admin \
+                          --build-arg REACT_APP_CHAT_API_URL=/api/chat \
+                          --build-arg REACT_APP_CHAT_SOCKET_URL=${PUBLIC_URL} \
+                          -t frontend:latest -t frontend:${IMAGE_TAG} frontend
+                        '''
                     }
                 }
 
